@@ -103,6 +103,7 @@ def process(transcripts):
 
 
 def get_punctuation(text):
+    # Ref: http://bark.phon.ioc.ee/punctuator#
     url = "http://bark.phon.ioc.ee/punctuator"
     data = {'text': text}
     r = requests.post(url = url, data = data)
