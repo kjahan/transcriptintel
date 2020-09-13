@@ -1,6 +1,14 @@
 # transcriptintel
 Transcript intel
 
+## Activate conda env
+
+```
+$ conda activate crawly
+```
+
+(On MacOS: `unset PYTHONPATH`)
+
 ## Run analysis
 
 ```

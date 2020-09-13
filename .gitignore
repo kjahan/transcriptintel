@@ -130,3 +130,6 @@ dmypy.json
 
 # Custom
 data/
+.DS_Store
+*.html
+out
