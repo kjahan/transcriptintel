@@ -1,6 +1,8 @@
 import requests
 import pickle
 
+import nltk.data
+
 
 def load_transcripts(filename):
     """
@@ -132,8 +134,9 @@ def punctuate(unsegmented_text):
     return punctuated_text
 
 
-def get_video_slot_times(punctuated_text, video_start_times):
-    sentences = punctuated_text.split('.')
+def get_video_slot_times(punctuated_text, video_start_times, tokenizer):
+    # segment the text into sentences
+    sentences = tokenizer.tokenize(punctuated_text)
     start_times = []
     visited_tokens_so_far = 0
     for sent in sentences:
@@ -179,9 +182,10 @@ def generate_html(transcripts, base_url):
     return html
 
 
-def generate_html(punctuated_text, start_times, base_url):
+def generate_html(punctuated_text, start_times, base_url, tokenizer):
     html = ""
-    sentences = punctuated_text.split('.')
+    # segment the text into sentences
+    sentences = tokenizer.tokenize(punctuated_text)
     trans_inx = 0
     for idx, sentence in enumerate(sentences):
         try:
@@ -189,11 +193,12 @@ def generate_html(punctuated_text, start_times, base_url):
         except IndexError:
             continue
         url = base_url + start_time
-        html += '<p><span><a href="' + url + '" target="_blank">[' + period + ']</a> – </span>' + sentence + '.' + '</p>\n'
+        html += '<p><span><a href="' + url + '" target="_blank">[' + period + ']</a> – </span>' + sentence + '</p>\n'
     return html
 
 
 def run():
+    tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
     filename = "data/peterthiel_you_are_not_a_lottery_ticket_2013_sxsw.srt"
     yt_base_url = "https://youtu.be/iZM_JmZdqCw?t="
     transcripts = load_transcripts(filename)
@@ -207,10 +212,10 @@ def run():
     with open('data/punctuated.txt', 'rb') as fp:
         punctuated_text = pickle.load(fp)
     # print(punctuated_text)
-    start_times = get_video_slot_times(punctuated_text, video_start_times)
+    start_times = get_video_slot_times(punctuated_text, video_start_times, tokenizer)
     print(len(start_times))
     print(len(punctuated_text.split('.')))
-    html = generate_html(punctuated_text, start_times, yt_base_url)
+    html = generate_html(punctuated_text, start_times, yt_base_url, tokenizer)
     # html = generate_html(transcripts, punctuated_text, yt_base_url)
     with open("peter_theil_with_punc.html", "w") as fp:
         fp.write(html)
