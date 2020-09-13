@@ -172,6 +172,32 @@ def get_video_slot_times(punctuated_text, video_start_times, tokenizer):
     return start_times
 
 
+def generate_paragraphs(punctuated_text, tokenizer, min_paragraph_len=20, max_pararagraph_len=80):
+    sentences = tokenizer.tokenize(punctuated_text)
+    paragraphs = {} # a map from sentence index to the paragraph index
+    state = 0
+    paragraph_inx = 0
+    paragraph_len = 0
+    for idx, sentence in enumerate(sentences):
+        print("ids: {}, sent: {}".format(idx, sentence))
+        if state == 0:
+            # starting a new paragraph
+            paragraphs[idx] = paragraph_inx
+            paragraph_len += len(sentence.split(" "))
+            state = 1 # paragraph continuation
+        elif state == 1:
+            # continue state
+            if (paragraph_len + len(sentence.split(" ")) < max_pararagraph_len) or (paragraph_len < min_paragraph_len):
+                paragraphs[idx] = paragraph_inx
+                paragraph_len += len(sentence.split(" "))
+            else:
+                # starting a new paragraph
+                paragraph_inx += 1
+                paragraphs[idx] = paragraph_inx
+                paragraph_len = len(sentence.split(" "))
+                state = 1 # paragraph continuation
+    return paragraphs
+
 
 def generate_html(transcripts, base_url):
     html = ""
@@ -182,11 +208,10 @@ def generate_html(transcripts, base_url):
     return html
 
 
-def generate_html(punctuated_text, start_times, base_url, tokenizer):
+def generate_html(punctuated_text, tokenizer, start_times, base_url):
     html = ""
     # segment the text into sentences
     sentences = tokenizer.tokenize(punctuated_text)
-    trans_inx = 0
     for idx, sentence in enumerate(sentences):
         try:
             start_time, period = start_times[idx]
@@ -194,6 +219,35 @@ def generate_html(punctuated_text, start_times, base_url, tokenizer):
             continue
         url = base_url + start_time
         html += '<p><span><a href="' + url + '" target="_blank">[' + period + ']</a> – </span>' + sentence + '</p>\n'
+    return html
+
+
+def generate_html(punctuated_text, paragraphs, tokenizer, start_times, base_url):
+    # segment the text into sentences
+    sentences = tokenizer.tokenize(punctuated_text)
+    start_paragraphs_inx = -1
+    html, paragraph = "", ""
+    for idx, sentence in enumerate(sentences):
+        if start_paragraphs_inx < paragraphs[idx]:
+            if start_paragraphs_inx >= 0:
+                # generate html for last paragraph
+                html += '<p><span><a href="' + url + '" target="_blank">[' + period + ']</a> – </span>' + paragraph + '</p>\n'
+                paragraph = ""
+            # new paragraph started
+            start_paragraphs_inx = paragraphs[idx]
+            # pull start time
+            try:
+                start_time, period = start_times[idx]
+            except IndexError:
+                continue
+            url = base_url + start_time
+            paragraph = sentence
+        else:
+            # paragraph continuation
+            paragraph += ' ' + sentence
+    # add last paragraph
+    if paragraph:
+        html += '<p><span><a href="' + url + '" target="_blank">[' + period + ']</a> – </span>' + paragraph + '</p>\n'
     return html
 
 
@@ -215,7 +269,11 @@ def run():
     start_times = get_video_slot_times(punctuated_text, video_start_times, tokenizer)
     print(len(start_times))
     print(len(punctuated_text.split('.')))
-    html = generate_html(punctuated_text, start_times, yt_base_url, tokenizer)
+    # html = generate_html(punctuated_text, tokenizer, start_times, yt_base_url)
+    min_paragraph_len, max_pararagraph_len = 50, 100
+    paragraphs = generate_paragraphs(punctuated_text, tokenizer, min_paragraph_len, max_pararagraph_len)
+    print(paragraphs)
+    html = generate_html(punctuated_text, paragraphs, tokenizer, start_times, yt_base_url)
     # html = generate_html(transcripts, punctuated_text, yt_base_url)
     with open("peter_theil_with_punc.html", "w") as fp:
         fp.write(html)
